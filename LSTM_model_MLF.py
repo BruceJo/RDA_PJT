@@ -29,10 +29,10 @@ class MongoDatabase:
 
     def get_environment(self, limit=None):
         """Public method to fetch environment data from the 'GH2' collection."""
-        return self._fetch_data("GH2", limit)
+        return self._fetch_data("GH1", limit)
 
     def get_growth(self, limit=None):
-        """Public method to fetch growth data from the 'hydroponics_length1' collection."""
+        """Public method to fetch growth data from the 'hydroponics_length2' collection."""
         return self._fetch_data("hydroponics_length1", limit)
 
 
