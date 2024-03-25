@@ -1,4 +1,4 @@
-from keras.layers import Dense,  SimpleRNN
+from keras.layers import Dense, SimpleRNN, LSTM
 from pymongo import MongoClient
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow import keras
@@ -111,26 +111,93 @@ def create_rnn_model():
     )
     return model
 
+# LSTM model(origin)
+# def create_lstm_model():
+#     model = keras.Sequential()
+#     model.add(LSTM(units=50, input_shape=(X_train.shape[1], X_train.shape[2]), activation='relu'))
+#     model.add(Dense(1))
+
+#     model.compile(
+#         optimizer="adam",
+#         loss = 'mean_squared_error',
+#         metrics = [
+#             keras.metrics.MeanSquaredError(),
+#             keras.metrics.RootMeanSquaredError(),
+#             keras.metrics.MeanAbsoluteError()
+#         ]
+#     )
+#     return model
+
+def create_lstm_model():
+    model = keras.Sequential()
+    model.add(LSTM(units=64, input_shape=(look_back, 2)))
+    model.add(Dense(1))
+
+    model.compile(
+        optimizer = keras.optimizers.Adam(learning_rate=0.001),
+        loss = 'mean_squared_error',
+        metrics = [
+            keras.metrics.MeanSquaredError(),
+            keras.metrics.RootMeanSquaredError(),
+            keras.metrics.MeanAbsoluteError()
+        ]
+    )
+    return model
+
+
 
 #########################################
 
+select_model = {
+    'lstm' : {
+        'name' : 'LSTM',
+        'experiment': 'lstm_experiment', 
+        'model_name' : 'lstm_model',
+        'create' : 'create_lstm_model()',
+        'fit' : {
+            'x' : X_train, 
+            'y' : Y_train, 
+            'validation_data' : (X_val, Y_val),
+            'epochs' : 128,
+            'batch_size' : 32, 
+            'verbose' : 2,
+            'shuffle' : False
+        }
+    },
+    'rnn' : {
+        'name' : 'RNN',
+        'experiment': 'rnn_experiment', 
+        'model_name' : 'rnn_model',
+        'create' : 'create_rnn_model()',
+        'fit' : {
+            'x' : X_train, 
+            'y' : Y_train, 
+            'validation_data' : (X_val, Y_val),
+            'epochs' : 100
+        }
+    }
+}
+
+# set_model
+set_model = select_model['rnn']
+
 
 # run MLFlow
-mlflow.set_experiment("rnn_experiment")
+mlflow.set_experiment(set_model['experiment'])
 
 with mlflow.start_run():
     mlflow.tensorflow.autolog()
 
-    # Define the RNN model
-    RNN_model = create_rnn_model()
-    RNN_model.fit(X_train, Y_train, validation_data=(X_val, Y_val), epochs=100)
+    # Define the model
+    model = eval(set_model['create'])
+    model.fit(**set_model['fit'])
     
     # Save the model
     print("Model run: ", mlflow.active_run().info.run_uuid)
-    mlflow.sklearn.log_model(RNN_model, "rnn_model")
+    mlflow.sklearn.log_model(model, set_model['model_name'])
 
     # Make predictions on the test set
-    predictions = RNN_model.predict(X_test)
+    predictions = model.predict(X_test)
 
     # Visualize predictions vs true values
     plt.figure(figsize=(10, 6))
@@ -148,7 +215,7 @@ with mlflow.start_run():
     # Plot a comparison between predicted and actual values
     plt.figure(figsize=(10, 6))
     plt.plot(Y_test, label="Actual values", color='blue', alpha=0.5)
-    plt.plot(predictions, label="Predicted values of RNN", color='red', alpha=0.5)
+    plt.plot(predictions, label="Predicted values of "+set_model['name'], color='red', alpha=0.5)
     plt.title("Prediction vs Actual values")
     plt.savefig("comparison_plot.png")
     plt.close() 
@@ -157,7 +224,7 @@ with mlflow.start_run():
     mlflow.log_artifact("comparison_plot.png")
 
     # Make predictions on the train set
-    train_predictions = RNN_model.predict(X_train)
+    train_predictions = model.predict(X_train)
 
     # Visualize predictions vs true values
     plt.figure(figsize=(10, 6))
@@ -175,7 +242,7 @@ with mlflow.start_run():
     # Plot a comparison between predicted and actual values
     plt.figure(figsize=(10, 6))
     plt.plot(Y_train, label="Actual values", color='blue', alpha=0.5)
-    plt.plot(train_predictions, label="Predicted values of RNN", color='red', alpha=0.5)
+    plt.plot(train_predictions, label="Predicted values of "+set_model['name'], color='red', alpha=0.5)
     plt.title("Prediction vs Actual values")
     plt.savefig("comparison_plot_on_train_data.png")
     plt.close() 

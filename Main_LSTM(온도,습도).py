@@ -1,39 +1,18 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
-import matplotlib.pyplot as plt
-import seaborn as sns
+import numpy as np
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
-from matplotlib import pyplot
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.layers import LSTM
-from math import sqrt
-from pandas import DataFrame
-from pandas import concat
-from matplotlib import pyplot
-from keras.models import model_from_json
-import time
 from tensorflow import keras
 from keras.optimizers import SGD
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
-from keras.models import Sequential
-from keras.layers import *
-from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error
-from pymongo import MongoClient
 from datetime import datetime
 import pymongo
 import copy
-CONNECTION_STRING = "mongodb://netdb:netdb3230!@203.255.77.192:27017/"
+import mlflow
 
-client = MongoClient(CONNECTION_STRING)
-
-# def get_database_size(collection_name):
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+client = pymongo.MongoClient("mongodb://netdb:netdb3230!@10.255.93.173:27017/")
 
 Things_to_refer = "Things_to_refer"
 system_model = 1
@@ -53,7 +32,6 @@ def compare_MSE_with_system_models_MSE(this_mse,model_name):
     # 재학습된 결과와 기존 탈락한 system_model을 비교해 누구를 모델 대표의 모델 파일로 살릴지 결정.
 
 def match_infacility_with_growth(infacilitys,growth_dbNames): # infacilitys(하우스 번호 리스트)과 growth_dbNames는 1:1 매핑으로 주어져야한다. 각 하우스번호에 맞는 생육 db infacilitys는 GH2에 속함.
-    
     # 이게 1분 단위 환경 데이터를 1일 평균 환경 데이터로 만드는 함수라서, 이 환경 데이터의 시작 날짜와 
     # 생육 데이터의 시작 날짜가 동일해야한다. 참고로 (생육:환경 = 1:7) 비율로 매핑.
 
@@ -150,12 +128,6 @@ def map_env_growth_7vs1(env_data,growth_data): # 모델 재학습 input data 만
                 for k in range(7):
                     tmp_env_data.append(env_data_for_tmp_growth_data[idx*7+k])
 
-
-        # for i in range(len(tmp_growth_data)):
-        #     y.append(tmp_growth_data[i])
-        #     for k in range(7):
-        #         x.append(tmp_env_data[(i//len(tmp_growth_data))*7+k])
-
         x = np.array(tmp_env_data)
         y = np.array(tmp_growth_data)
         x_scaled = scaler.fit_transform(x)
@@ -196,6 +168,7 @@ def map_env_growth_7vs1(env_data,growth_data): # 모델 재학습 input data 만
             print("Predicted:", pre_val)
             print("Actual:", act_val)
         new_loss = print(new_loss)
+
 def reload_model(name): # 이전에 학습한 모델을 재학습 시키기 위해 불러오기 # ex) name = "old_model.json"
     ##### 모델 reload #####
     with open(name, "r") as json_file:
@@ -335,7 +308,6 @@ def trigger(): # 여기에 mongodb 데이터가 전 보다 20% 증가하면 데�
 
 # while(1): # trigger를 계속 while문으로 돌린다.
 if trigger():
-
     #★ ★ ★ ★ ★ ★ ★ ★ match_infacility_with_growth를 빠르게 체크하기위해 잠시 비활성화 시켰음(별 줄사이의 모든 주석을 해제하면 됨.) ★ ★ ★ ★ ★ ★ ★ ★ ★
     scaler = MinMaxScaler()
     print("재학습 및 데이터베이스 사이즈 최신화 완료..")
@@ -357,55 +329,6 @@ if trigger():
     #                                                                           }
 
     map_env_growth_7vs1(day_avg_env_data_for_each_facilitys,week_growth_data_for_each_facilitys)
-
-    # 컬렉션 가장 첫번째, 마지막 문서 조회하는 코드 (해당 컬렉션 기간 확인을 위함.)
-    # query = {"inFacilityId":34}
-    
-    # print(client["TestAPI"]["GH2"].find_one(query))
-    # print(client["TestAPI"]["GH2"].find_one(query,sort=[("$natural", pymongo.DESCENDING)]))
-    # print()
-    # query = {"inFacilityId":35}
-    # print(client["TestAPI"]["GH2"].find_one(query))
-    # print(client["TestAPI"]["GH2"].find_one(query,sort=[("$natural", pymongo.DESCENDING)]))
-    # print()
-    # print(client["TestAPI"]["hydroponics_length1"].find_one())
-    # print(client["TestAPI"]["hydroponics_length1"].find_one(sort=[("$natural", pymongo.DESCENDING)]))
-    # print()
-    # print(client["TestAPI"]["hydroponics_length2"].find_one())
-    # print(client["TestAPI"]["hydroponics_length2"].find_one(sort=[("$natural", pymongo.DESCENDING)]))
-    # df = pd.DataFrame(data)
-    # x_values = df.values
-    # y_values = np.array(growth)
-
-    # slice_Int = (len(y_values)*24) # 이 값이 딱 맞아떨어져야함 (4000,2) = reshape(1000,4,2)이런식으로 4000 - 4000 = 0
-
-    # x_values = x_values[:slice_Int]
-
-    # y_train_size = int(len(y_values)*0.8)
-    # x_train_size = y_train_size*24*len(data)
-    
-    # x_scaled = scaler.fit_transform(x_values)
-    # x_scaled.reshape(len(y_values),24,len(data))
-
-    # train_x = x_scaled[:x_train_size//len(data),:]
-    # test_x = x_scaled[x_train_size//len(data):,:]
-    # print(type(y_values))
-    # print(y_values.shape)
-    # # train_y = y_values[:y_train_size,:]
-    # # test_y = y_values[y_train_size:,:]
-    # train_y = y_values[:y_train_size]
-    # test_y = y_values[y_train_size:]
-
-    # train_reshape1 = x_train_size//(24*len(data))
-    # test_reshape1 = (len(x_values) - train_reshape1*24)//24
-
-    # train_x = train_x.reshape((train_reshape1,24,len(data)))
-    # test_x = test_x.reshape((test_reshape1,24,len(data)))
-
-    # train_x = train_x.reshape((train_x.shape[0],train_x.shape[1],len(data)))
-    # test_x = test_x.reshape((test_x.shape[0],test_x.shape[1],len(data)))
-    # train_y = train_y.reshape((train_y.shape[0],1,1))
-    # test_y = test_y.reshape((test_y.shape[0],1,1))
 
     ##### 모델 reload #####
     model_json_path = "old_model.json"
